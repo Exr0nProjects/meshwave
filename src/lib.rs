@@ -10,6 +10,7 @@ use derivative::Derivative;
 
 use rand::prelude::{ thread_rng, ThreadRng };
 use rand::distributions::{ Distribution, uniform::{ Uniform, UniformFloat } };
+use rand::Rng;
 
 use itertools::Itertools;
 
@@ -22,7 +23,7 @@ const NUM_POINTS: usize = 10;
 const NOISE_RANGE: f64 = 100.;
 const NOISE_SCALE: f64 = 300.;
 const CHANGE_SPEED: f64 = 0.1;
-const RESOLUTION: f64 = 0.1; // points per pixel
+const RESOLUTION: f64 = 0.12; // points per pixel
 
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
@@ -127,7 +128,7 @@ impl Lines {
         ctx.stroke();
         //console::log_1(&JsValue::from_str(&format!("\n")));
     }
-    fn render(&self, pos: f64) {
+    fn render(&mut self, pos: f64) {
         let (size_w, size_h) = (self.canvas.client_width() as f64, self.canvas.client_height() as f64);
         self.canvas.set_width(size_w as u32);
         self.canvas.set_height(size_h as u32);
@@ -145,32 +146,22 @@ impl Lines {
 
         ctx.clear_rect(0., 0., size_w, size_h);
 
-        //let to_warped_loc = |x: f64, y: f64| {
-        //    let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-        //    let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-        //    (x + noise_x, y + noise_y)
-        //};
-
         for x in (-NOISE_RANGE*RESOLUTION) as i32..((size_w + NOISE_RANGE)*RESOLUTION) as i32 {
             for y in (-NOISE_RANGE*RESOLUTION) as i32..((size_h + NOISE_RANGE)*RESOLUTION) as i32 {
-                let x = x as f64 / RESOLUTION;
-                let y = y as f64 / RESOLUTION;
-                let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED])
-                    as f64 * NOISE_RANGE;
-                let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED])
-                    as f64 * NOISE_RANGE;
+                if self.rng.gen_bool(0.2) {
+                    let x = x as f64 / RESOLUTION;
+                    let y = y as f64 / RESOLUTION;
 
-                //let (x, y) = to_warped_loc(x as f64 / RESOLUTION, y as f64 / RESOLUTION);
-                ctx.fill_rect(x + noise_x, y + noise_y, 1., 1.);
+                    let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED])
+                        as f64 * NOISE_RANGE;
+                    let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED])
+                        as f64 * NOISE_RANGE;
+
+                    //let (x, y) = to_warped_loc(x as f64 / RESOLUTION, y as f64 / RESOLUTION);
+                    ctx.fill_rect(x + noise_x, y + noise_y, 1., 1.);
+                }
             }
         }
-        //for line in &self.lines {
-        //    self.draw_line(&ctx, line, pos);
-        //}
-        //
-        //for point in &self.points {
-        //    ctx.fill_rect(point.0 - 5., point.1 - 5., 10., 10.);
-        //}
     }
 }
 
