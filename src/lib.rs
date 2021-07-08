@@ -14,11 +14,12 @@ use rand::distributions::{ Distribution, uniform::{ Uniform, UniformFloat } };
 use std::iter::repeat;
 use std::mem;
 
-const UPDATE_RATE: u32 = 120; // updates per second
+const UPDATE_RATE: u32 = 12; // updates per second
 
 const NUM_POINTS: usize = 6; 
-const NOISE_SCALE: f64 = 0.1;
-const RESOLUTION: f64 = 0.2; // points per pixel
+const NOISE_RANGE: f64 = 100.;
+const NOISE_SCALE: f64 = 300.;
+const RESOLUTION: f64 = 0.05; // points per pixel
 
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
@@ -80,9 +81,9 @@ impl Lines {
             .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
             .collect::<Vec<(f64, f64)>>();
 
-        for point in &points {
-            console::log_1(&JsValue::from_str(&format!("point at {}, {}", point.0, point.1)));
-        }
+        //for point in &points {
+        //    console::log_1(&JsValue::from_str(&format!("point at {}, {}", point.0, point.1)));
+        //}
 
         let mut lines = Vec::<Line>::new();
         lines.reserve(points.len().pow(2));
@@ -98,7 +99,7 @@ impl Lines {
     }
 
     fn draw_line(&self, line: &Line, pos: f64) {
-        let f = |x: f64| (line.0.1-line.1.0) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
+        let f = |x: f64| (line.0.1-line.1.1) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
 
         self.ctx.move_to(line.0.0, line.0.1);
         let dist = ((line.1.0 - line.0.0).powf(2.)
@@ -107,11 +108,12 @@ impl Lines {
         for i in 0..num {
             let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
             let y = f(x);
+            //console::log_1(&JsValue::from_str(&format!("line {}..{}: {}", line.0.0, line.1.0, x)));
 
-            //let noise_x = self.simplex.noise_3d(x as f32, y as f32,  pos as f32) as f64 * NOISE_SCALE;
-            //let noise_y = self.simplex.noise_3d(x as f32, y as f32, -pos as f32) as f64 * NOISE_SCALE;
-            let noise_x = self.noise.get([x, y,  pos]) as f64 * NOISE_SCALE;
-            let noise_y = self.noise.get([x, y, -pos]) as f64 * NOISE_SCALE;
+            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos]) as f64 * NOISE_RANGE;
+            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos]) as f64 * NOISE_RANGE;
+            //let noise_x = 0.;
+            //let noise_y = 0.;
 
             self.ctx.line_to(x + noise_x, y + noise_y);
         }
@@ -119,10 +121,13 @@ impl Lines {
         //    let x = line.0.0 + x_int as f64 / RESOLUTION;
         //    self.ctx.line_to(line.0.0 + x, line.0.1 + f(x)); // TODO: add noise
         //}
+        self.ctx.line_to(line.1.0, line.1.1);
         self.ctx.stroke();
+        //console::log_1(&JsValue::from_str(&format!("\n")));
     }
     fn render(&self, pos: f64) {
-        //self.ctx.fill_rect(0., 0., self.size_w-10., self.size_h-10.);
+        self.ctx.fill_rect(0., 0., self.size_w-10., self.size_h-10.);
+        //self.ctx.clear_rect(0., 0., self.size_w, self.size_h);
         for line in &self.lines {
             self.draw_line(line, pos);
         }
