@@ -11,12 +11,14 @@ use derivative::Derivative;
 use rand::prelude::{ thread_rng, ThreadRng };
 use rand::distributions::{ Distribution, uniform::{ Uniform, UniformFloat } };
 
+use itertools::Itertools;
+
 use std::iter::repeat;
 use std::mem;
 
 const UPDATE_RATE: u32 = 30; // updates per second
 
-const NUM_POINTS: usize = 12; 
+const NUM_POINTS: usize = 10;
 const NOISE_RANGE: f64 = 100.;
 const NOISE_SCALE: f64 = 300.;
 const CHANGE_SPEED: f64 = 0.1;
@@ -71,12 +73,15 @@ impl Lines {
 
         let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
         
-        let mut rng = thread_rng();
-        let udist_w = Uniform::new(0., size_w);
-        let udist_h = Uniform::new(0., size_h);
-        
-        let points = repeat(()).take(points)
-            .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
+        //let mut rng = thread_rng();
+        //let udist_w = Uniform::new(0., size_w);
+        //let udist_h = Uniform::new(0., size_h);
+        //let points = repeat(()).take(points)
+        //    .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
+        //    .collect::<Vec<(f64, f64)>>();
+        let points_per_side = (NUM_POINTS as f64).sqrt() as i32;
+        let points = (0..points_per_side).cartesian_product(0..points_per_side)
+            .map(|(x, y)| (size_w * (x as f64/points_per_side as f64), size_h * (y as f64/points_per_side as f64)))
             .collect::<Vec<(f64, f64)>>();
 
         let mut lines = Vec::<Line>::new();
@@ -96,22 +101,32 @@ impl Lines {
         let f = |x: f64| (line.0.1-line.1.1) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
 
         self.ctx.begin_path();
-        self.ctx.move_to(line.0.0, line.0.1);
+        {
+            let (x, y) = line.0;
+            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            self.ctx.move_to(x + noise_x, y + noise_y);
+        }
+        //self.ctx.move_to(
+        //    line.0.0 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE,
+        //    line.0.1 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE);
+
         let dist = ((line.1.0 - line.0.0).powf(2.)
                    +(line.1.1 - line.0.1).powf(2.)).sqrt();
         let num  = (dist * RESOLUTION) as i32;
+
+        let to_warped_point = |x: f64, y: f64| {
+            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            self.ctx.line_to(x + noise_x, y + noise_y);
+        };
         for i in 0..num {
             let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
             let y = f(x);
 
-            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-            //let noise_x = 0.;
-            //let noise_y = 0.;
-
-            self.ctx.line_to(x + noise_x, y + noise_y);
+            to_warped_point(y, x);
         }
-        self.ctx.line_to(line.1.0, line.1.1);
+        to_warped_point(line.1.0, line.1.1);
         self.ctx.stroke();
         //console::log_1(&JsValue::from_str(&format!("\n")));
     }
