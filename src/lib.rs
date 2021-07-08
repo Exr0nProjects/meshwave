@@ -52,24 +52,23 @@ impl Line {
 #[derive(Derivative)]
 #[derivative(Debug)]
 struct Lines {
-    ctx: web_sys::CanvasRenderingContext2d,
     lines: Vec<Line>,
     points: Vec<(f64, f64)>,
     size_w: f64,
     size_h: f64,
     #[derivative(Debug="ignore")]
+    canvas: web_sys::HtmlCanvasElement,
+    #[derivative(Debug="ignore")]
     noise: SuperSimplex,
 }
 impl Lines {
     fn new(canvas: web_sys::HtmlCanvasElement, points: usize) -> Lines {
-        let ctx = canvas
-            .get_context("2d")
-            .unwrap()
-            .unwrap()
-            .dyn_into::<web_sys::CanvasRenderingContext2d>()
-            .unwrap();
-        ctx.set_stroke_style(&JsValue::from_str(&format!("blue")));
-        ctx.set_fill_style(  &JsValue::from_str(&format!("green")));
+        //let ctx = canvas
+        //    .get_context("2d")
+        //    .unwrap()
+        //    .unwrap()
+        //    .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        //    .unwrap();
 
         let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
         
@@ -79,9 +78,10 @@ impl Lines {
         //let points = repeat(()).take(points)
         //    .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
         //    .collect::<Vec<(f64, f64)>>();
-        let points_per_side = (NUM_POINTS as f64).sqrt() as i32;
+        let points_per_side = (points as f64).sqrt() as i32;
         let points = (0..points_per_side).cartesian_product(0..points_per_side)
-            .map(|(x, y)| (size_w * (x as f64/points_per_side as f64), size_h * (y as f64/points_per_side as f64)))
+            .map(|(x, y)| (size_w * (x as f64/points_per_side as f64),
+                           size_h * (y as f64/points_per_side as f64)))
             .collect::<Vec<(f64, f64)>>();
 
         let mut lines = Vec::<Line>::new();
@@ -94,18 +94,18 @@ impl Lines {
 
         let noise = SuperSimplex::new();
 
-        Lines { ctx, size_w, size_h, lines, points, noise }
+        Lines { canvas, size_w, size_h, lines, points, noise }
     }
 
-    fn draw_line(&self, line: &Line, pos: f64) {
+    fn draw_line(&self, ctx: &web_sys::CanvasRenderingContext2d, line: &Line, pos: f64) {
         let f = |x: f64| (line.0.1-line.1.1) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
 
-        self.ctx.begin_path();
+        ctx.begin_path();
         {
             let (x, y) = line.0;
             let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
             let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-            self.ctx.move_to(x + noise_x, y + noise_y);
+            ctx.move_to(x + noise_x, y + noise_y);
         }
         //self.ctx.move_to(
         //    line.0.0 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE,
@@ -118,7 +118,7 @@ impl Lines {
         let to_warped_point = |x: f64, y: f64| {
             let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
             let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-            self.ctx.line_to(x + noise_x, y + noise_y);
+            ctx.line_to(x + noise_x, y + noise_y);
         };
         for i in 0..num {
             let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
@@ -127,19 +127,46 @@ impl Lines {
             to_warped_point(y, x);
         }
         to_warped_point(line.1.0, line.1.1);
-        self.ctx.stroke();
+        ctx.stroke();
         //console::log_1(&JsValue::from_str(&format!("\n")));
     }
     fn render(&self, pos: f64) {
-        self.ctx.fill_rect(0., 0., self.size_w-10., self.size_h-10.);
-        self.ctx.clear_rect(0., 0., self.size_w, self.size_h);
-        for line in &self.lines {
-            self.draw_line(line, pos);
-        }
+        let (size_w, size_h) = (self.canvas.client_width() as f64, self.canvas.client_height() as f64);
+        self.canvas.set_width(size_w as u32);
+        self.canvas.set_height(size_h as u32);
+        //self.canvas.set_width(self.canvas.client_width() as u32);
+        //self.canvas.set_height(self.canvas.client_height() as u32);
+        let ctx = self.canvas
+            .get_context("2d")
+            .unwrap()
+            .unwrap()
+            .dyn_into::<web_sys::CanvasRenderingContext2d>()
+            .unwrap();
 
-        for point in &self.points {
-            self.ctx.fill_rect(point.0 - 5., point.1 - 5., 10., 10.);
+        ctx.set_stroke_style(&JsValue::from_str(&format!("blue")));
+        ctx.set_fill_style(  &JsValue::from_str(&format!("green")));
+
+        ctx.clear_rect(0., 0., size_w, size_h);
+
+        let to_warped_loc = |x: f64, y: f64| {
+            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            (x + noise_x, y + noise_y)
+        };
+
+        for x in 0..(size_w*RESOLUTION) as i32 {
+            for y in 0..(size_h*RESOLUTION) as i32 {
+                let (x, y) = to_warped_loc(x as f64 / RESOLUTION, y as f64 / RESOLUTION);
+                ctx.fill_rect(x, y, 1., 1.);
+            }
         }
+        //for line in &self.lines {
+        //    self.draw_line(&ctx, line, pos);
+        //}
+        //
+        //for point in &self.points {
+        //    ctx.fill_rect(point.0 - 5., point.1 - 5., 10., 10.);
+        //}
     }
 }
 
@@ -165,12 +192,12 @@ pub fn main_js() -> Result<(), JsValue> {
     canvas.set_width(canvas.client_width() as u32);
     canvas.set_height(canvas.client_height() as u32);
 
-    let ctx = canvas
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap();
+    //let ctx = canvas
+    //    .get_context("2d")
+    //    .unwrap()
+    //    .unwrap()
+    //    .dyn_into::<web_sys::CanvasRenderingContext2d>()
+    //    .unwrap();
 
 
     let (size_w, size_h) = (canvas.client_width(), canvas.client_height());
@@ -178,7 +205,7 @@ pub fn main_js() -> Result<(), JsValue> {
 
     let sim = Lines::new(canvas, NUM_POINTS);
 
-    game_loop(sim, UPDATE_RATE, 0.1, |g| {
+    game_loop(sim, UPDATE_RATE, 0.1, |_| {
         // update fn
     }, |g| {
         g.game.render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
