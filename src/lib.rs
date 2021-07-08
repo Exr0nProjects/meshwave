@@ -10,7 +10,6 @@ use derivative::Derivative;
 
 use rand::prelude::{ thread_rng, ThreadRng };
 use rand::distributions::{ Distribution, uniform::{ Uniform, UniformFloat } };
-use rand::Rng;
 
 use itertools::Itertools;
 
@@ -69,7 +68,7 @@ impl Lines {
 
         let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
         
-        let rng = thread_rng();
+        let mut rng = thread_rng();
         ////let udist_w = Uniform::new(0., size_w);
         ////let udist_h = Uniform::new(0., size_h);
         ////let points = repeat(()).take(points)
@@ -95,40 +94,40 @@ impl Lines {
         Lines { canvas, size_w, size_h, noise, rng }
     }
 
-    //fn draw_line(&self, ctx: &web_sys::CanvasRenderingContext2d, line: &Line, pos: f64) {
-    //    let f = |x: f64| (line.0.1-line.1.1) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
-    //
-    //    ctx.begin_path();
-    //    {
-    //        let (x, y) = line.0;
-    //        let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        ctx.move_to(x + noise_x, y + noise_y);
-    //    }
-    //    //self.ctx.move_to(
-    //    //    line.0.0 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE,
-    //    //    line.0.1 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE);
-    //
-    //    let dist = ((line.1.0 - line.0.0).powf(2.)
-    //               +(line.1.1 - line.0.1).powf(2.)).sqrt();
-    //    let num  = (dist * RESOLUTION) as i32;
-    //
-    //    let to_warped_point = |x: f64, y: f64| {
-    //        let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        ctx.line_to(x + noise_x, y + noise_y);
-    //    };
-    //    for i in 0..num {
-    //        let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
-    //        let y = f(x);
-    //
-    //        to_warped_point(y, x);
-    //    }
-    //    to_warped_point(line.1.0, line.1.1);
-    //    ctx.stroke();
-    //    //console::log_1(&JsValue::from_str(&format!("\n")));
-    //}
-    fn render(&mut self, pos: f64) {
+    fn draw_line(&self, ctx: &web_sys::CanvasRenderingContext2d, line: &Line, pos: f64) {
+        let f = |x: f64| (line.0.1-line.1.1) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
+
+        ctx.begin_path();
+        {
+            let (x, y) = line.0;
+            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            ctx.move_to(x + noise_x, y + noise_y);
+        }
+        //self.ctx.move_to(
+        //    line.0.0 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE,
+        //    line.0.1 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE);
+
+        let dist = ((line.1.0 - line.0.0).powf(2.)
+                   +(line.1.1 - line.0.1).powf(2.)).sqrt();
+        let num  = (dist * RESOLUTION) as i32;
+
+        let to_warped_point = |x: f64, y: f64| {
+            let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
+            ctx.line_to(x + noise_x, y + noise_y);
+        };
+        for i in 0..num {
+            let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
+            let y = f(x);
+
+            to_warped_point(y, x);
+        }
+        to_warped_point(line.1.0, line.1.1);
+        ctx.stroke();
+        //console::log_1(&JsValue::from_str(&format!("\n")));
+    }
+    fn render(&self, pos: f64) {
         let (size_w, size_h) = (self.canvas.client_width() as f64, self.canvas.client_height() as f64);
         self.canvas.set_width(size_w as u32);
         self.canvas.set_height(size_h as u32);
@@ -146,23 +145,23 @@ impl Lines {
 
         ctx.clear_rect(0., 0., size_w, size_h);
 
-        // can't use closure because it borrows for the entire scope
         //let to_warped_loc = |x: f64, y: f64| {
         //    let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
         //    let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
         //    (x + noise_x, y + noise_y)
         //};
 
-        for x in 0..(size_w*RESOLUTION) as i32 {
-            for y in 0..(size_h*RESOLUTION) as i32 {
-                //if self.rng.gen_bool(0.9) {
-                if true {
-                    let noise_x = self.noise.get([x as f64/NOISE_SCALE, y as f64/NOISE_SCALE,  pos*CHANGE_SPEED])
-                        as f64 * NOISE_RANGE;
-                    let noise_y = self.noise.get([x as f64/NOISE_SCALE, y as f64/NOISE_SCALE, -pos*CHANGE_SPEED])
-                        as f64 * NOISE_RANGE;
-                    ctx.fill_rect((x as f64 + noise_x)/RESOLUTION, (y as f64 + noise_y)/RESOLUTION, 1., 1.);
-                }
+        for x in (-NOISE_RANGE*RESOLUTION) as i32..((size_w + NOISE_RANGE)*RESOLUTION) as i32 {
+            for y in (-NOISE_RANGE*RESOLUTION) as i32..((size_h + NOISE_RANGE)*RESOLUTION) as i32 {
+                let x = x as f64 / RESOLUTION;
+                let y = y as f64 / RESOLUTION;
+                let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED])
+                    as f64 * NOISE_RANGE;
+                let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED])
+                    as f64 * NOISE_RANGE;
+
+                //let (x, y) = to_warped_loc(x as f64 / RESOLUTION, y as f64 / RESOLUTION);
+                ctx.fill_rect(x + noise_x, y + noise_y, 1., 1.);
             }
         }
         //for line in &self.lines {
