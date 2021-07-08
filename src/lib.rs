@@ -1,3 +1,4 @@
+use game_loop::game_loop;
 use noise::{ NoiseFn, SuperSimplex };
 
 use wasm_bindgen::prelude::*;
@@ -13,8 +14,10 @@ use rand::distributions::{ Distribution, uniform::{ Uniform, UniformFloat } };
 use std::iter::repeat;
 use std::mem;
 
+const UPDATE_RATE: u32 = 120; // updates per second
+
 const NUM_POINTS: usize = 6; 
-const NOISE_SCALE: f64 = 1.;
+const NOISE_SCALE: f64 = 0.1;
 const RESOLUTION: f64 = 0.2; // points per pixel
 
 
@@ -47,6 +50,7 @@ impl Line {
 struct Lines {
     ctx: web_sys::CanvasRenderingContext2d,
     lines: Vec<Line>,
+    points: Vec<(f64, f64)>,
     size_w: f64,
     size_h: f64,
     #[derivative(Debug="ignore")]
@@ -62,7 +66,11 @@ impl Lines {
             .unwrap()
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
+        ctx.set_stroke_style(&JsValue::from_str(&format!("blue")));
+        ctx.set_fill_style(  &JsValue::from_str(&format!("green")));
+
         let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
+        //canvas.set_height(size_h as u32);
         
         let mut rng = thread_rng();
         let udist_w = Uniform::new(0., size_w);
@@ -71,6 +79,10 @@ impl Lines {
         let points = repeat(()).take(points)
             .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
             .collect::<Vec<(f64, f64)>>();
+
+        for point in &points {
+            console::log_1(&JsValue::from_str(&format!("point at {}, {}", point.0, point.1)));
+        }
 
         let mut lines = Vec::<Line>::new();
         lines.reserve(points.len().pow(2));
@@ -82,7 +94,7 @@ impl Lines {
 
         let noise = SuperSimplex::new();
 
-        Lines { ctx, size_w, size_h, lines, noise }
+        Lines { ctx, size_w, size_h, lines, points, noise }
     }
 
     fn draw_line(&self, line: &Line, pos: f64) {
@@ -107,6 +119,26 @@ impl Lines {
         //    let x = line.0.0 + x_int as f64 / RESOLUTION;
         //    self.ctx.line_to(line.0.0 + x, line.0.1 + f(x)); // TODO: add noise
         //}
+        self.ctx.stroke();
+    }
+    fn render(&self, pos: f64) {
+        //self.ctx.fill_rect(0., 0., self.size_w-10., self.size_h-10.);
+        for line in &self.lines {
+            self.draw_line(line, pos);
+        }
+
+        for point in &self.points {
+            self.ctx.fill_rect(point.0 - 5., point.1 - 5., 10., 10.);
+        }
+        //console::log_1(&JsValue::from_str(&format!("herro after {}", pos)));
+        //let window = web_sys::window().unwrap();
+        //let document = window.document().unwrap();
+        //let canvas = document.get_element_by_id("canvas").unwrap();
+        //let canvas: web_sys::HtmlCanvasElement = canvas
+        //    .dyn_into::<web_sys::HtmlCanvasElement>()
+        //    .map_err(|_| ())
+        //    .unwrap();
+        //console::log_1(&JsValue::from_str(&format!("client size: {}, {}", canvas.width(), canvas.height())));
     }
 }
 
@@ -129,6 +161,9 @@ pub fn main_js() -> Result<(), JsValue> {
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .map_err(|_| ())
         .unwrap();
+    canvas.set_width(canvas.client_width() as u32);
+    canvas.set_height(canvas.client_height() as u32);
+
     let ctx = canvas
         .get_context("2d")
         .unwrap()
@@ -136,11 +171,17 @@ pub fn main_js() -> Result<(), JsValue> {
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
         .unwrap();
 
-    let (size_w, size_h) = (canvas.client_width(), canvas.client_height());
-    let sim = Lines::new(canvas, NUM_POINTS);
-    //let sim = Lines::new(canvas, ctx, NUM_POINTS);
 
+    let (size_w, size_h) = (canvas.client_width(), canvas.client_height());
     console::log_1(&JsValue::from_str(&format!("client size: {}, {}", size_w, size_h)));
+
+    let sim = Lines::new(canvas, NUM_POINTS);
+
+    game_loop(sim, UPDATE_RATE, 0.1, |g| {
+        // update fn
+    }, |g| {
+        g.game.render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
+    });
 
     Ok(())
 }
