@@ -1,4 +1,4 @@
-use fuss::Simplex;
+use noise::{ NoiseFn, SuperSimplex };
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -50,43 +50,42 @@ struct Lines {
     size_w: f64,
     size_h: f64,
     #[derivative(Debug="ignore")]
-    simplex: Simplex,
+    noise: SuperSimplex,
 }
 impl Lines {
-    //fn new(canvas: web_sys::HtmlCanvasElement, points: usize) -> Lines {
-    fn new(canvas: web_sys::HtmlCanvasElement, points: usize) {
+    fn new(canvas: web_sys::HtmlCanvasElement, points: usize) -> Lines {
+    //fn new(canvas: web_sys::HtmlCanvasElement, points: usize) {
     //fn new(canvas: web_sys::HtmlCanvasElement, ctx: web_sys::CanvasRenderingContext2d, points: usize) -> Lines {
-        //let ctx = canvas
-        //    .get_context("2d")
-        //    .unwrap()
-        //    .unwrap()
-        //    .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        //    .unwrap();
-        //let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
-        let (size_w, size_h) = (0., 0.);
+        let ctx = canvas
+            .get_context("2d")
+            .unwrap()
+            .unwrap()
+            .dyn_into::<web_sys::CanvasRenderingContext2d>()
+            .unwrap();
+        let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
         
-        //let mut rng = thread_rng();
-        //let udist_w = Uniform::new(0., size_w);
-        //let udist_h = Uniform::new(0., size_h);
-        //
-        //let points = repeat(()).take(points)
-        //    .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
-        //    .collect::<Vec<(f64, f64)>>();
+        let mut rng = thread_rng();
+        let udist_w = Uniform::new(0., size_w);
+        let udist_h = Uniform::new(0., size_h);
+        
+        let points = repeat(()).take(points)
+            .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
+            .collect::<Vec<(f64, f64)>>();
 
         let mut lines = Vec::<Line>::new();
-        //lines.reserve(points.len().pow(2));
-        //for a in &points {
-        //    for b in &points {
-        //        lines.push(Line::new(*a, *b));
-        //    }
-        //}
+        lines.reserve(points.len().pow(2));
+        for a in &points {
+            for b in &points {
+                lines.push(Line::new(*a, *b));
+            }
+        }
 
-        let simplex = Simplex::new();
+        let noise = SuperSimplex::new();
 
-        //Lines { ctx, size_w, size_h, lines, simplex }
+        Lines { ctx, size_w, size_h, lines, noise }
     }
 
-    fn draw_line(&self, line: &Line, pos: f32) {
+    fn draw_line(&self, line: &Line, pos: f64) {
         let f = |x: f64| (line.0.1-line.1.0) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
 
         self.ctx.move_to(line.0.0, line.0.1);
@@ -97,8 +96,10 @@ impl Lines {
             let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
             let y = f(x);
 
-            let noise_x = self.simplex.noise_3d(x as f32, y as f32,  pos as f32) as f64 * NOISE_SCALE;
-            let noise_y = self.simplex.noise_3d(x as f32, y as f32, -pos as f32) as f64 * NOISE_SCALE;
+            //let noise_x = self.simplex.noise_3d(x as f32, y as f32,  pos as f32) as f64 * NOISE_SCALE;
+            //let noise_y = self.simplex.noise_3d(x as f32, y as f32, -pos as f32) as f64 * NOISE_SCALE;
+            let noise_x = self.noise.get([x, y,  pos]) as f64 * NOISE_SCALE;
+            let noise_y = self.noise.get([x, y, -pos]) as f64 * NOISE_SCALE;
 
             self.ctx.line_to(x + noise_x, y + noise_y);
         }
