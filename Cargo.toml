@@ -23,7 +23,8 @@ lto = true
 [dependencies]
 js-sys = "0.3.51"
 game-loop = "0.7.3"
-bracket-noise = "0.8.2"
+fuss = "0.2.2"
+derivative = "2.2.0"
 getrandom = { version = "0.2.3", features = ["js"] }
 rand = "0.8.4"
 # The `wasm-bindgen` crate provides the bare minimum functionality needed
