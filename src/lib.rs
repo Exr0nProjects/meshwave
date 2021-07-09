@@ -1,31 +1,24 @@
+// inspired by https://www.reddit.com/r/proceduralgeneration/comments/o88ual/magnets_generatively_warped_line/
 use game_loop::game_loop;
 use noise::{ NoiseFn, SuperSimplex };
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-use web_sys::{ console, EventListener, MouseEvent };
-
 use derivative::Derivative;
 
 use rand::prelude::{ thread_rng, ThreadRng };
-use rand::distributions::{ Distribution, uniform::{ Uniform, UniformFloat } };
 use rand::Rng;
 
-use itertools::Itertools;
-
-use std::iter::repeat;
-use std::mem;
 use std::rc::Rc;
 use std::cell::RefCell;
 
 const UPDATE_RATE: u32 = 30; // updates per second
 
-const NUM_POINTS: usize = 10;
-const NOISE_RANGE: f64 = 100.;
+const NOISE_RANGE: f64 = 200.;
 const NOISE_SCALE: f64 = 300.;
-const CHANGE_SPEED: f64 = 0.1;
-const RESOLUTION: f64 = 0.08; // points per pixel
+const CHANGE_SPEED: f64 = 0.08;
+const RESOLUTION: f64 = 0.06; // points per pixel
 
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
@@ -36,27 +29,9 @@ const RESOLUTION: f64 = 0.08; // points per pixel
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-//#[derive(Derivative)]
-//#[derivative(Debug)]
-//struct Line((f64, f64), (f64, f64)); // assert self.0.0 < self.1.0
-//impl Line {
-//    fn new(mut a: (f64, f64), mut b: (f64, f64)) -> Line {
-//        if a.0 > b.0 { mem::swap(&mut a, &mut b) }     // assert self.0.0 < self.1.0
-//        Line { 0: a, 1: b }
-//    }
-//    //fn from_distributions(udist_w: Uniform<f64>, udist_h: Uniform<f64>, rng: &mut ThreadRng) -> Line {
-//    //    let a = (udist_w.sample(&mut rng), udist_h.sample(&mut rng));
-//    //    let b = (udist_w.sample(&mut rng), udist_h.sample(&mut rng));
-//    //    if a.0 > b.0 { mem::swap(a, b) }     // assert self.0.0 < self.1.0
-//    //    Line { a, b }
-//    //}
-//}
-
 #[derive(Derivative)]
 #[derivative(Debug)]
 struct Lines {
-    //lines: Vec<Line>,
-    //points: Vec<(f64, f64)>,
     size_w: f64,
     size_h: f64,
     mouse_x: f64,
@@ -69,40 +44,15 @@ struct Lines {
     rng: ThreadRng,
 }
 impl Lines {
-    fn new(canvas: Rc<web_sys::HtmlCanvasElement>, points: usize) -> Rc<RefCell<Lines>> {
-
+    fn new(canvas: Rc<web_sys::HtmlCanvasElement>) -> Rc<RefCell<Lines>> {
         let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
-        
         let rng = thread_rng();
-
-
-        ////let udist_w = Uniform::new(0., size_w);
-        ////let udist_h = Uniform::new(0., size_h);
-        ////let points = repeat(()).take(points)
-        ////    .map(|_| (udist_w.sample(&mut rng), udist_h.sample(&mut rng)))
-        ////    .collect::<Vec<(f64, f64)>>();
-        //let points_per_side = (points as f64).sqrt() as i32;
-        //let points = (0..points_per_side).cartesian_product(0..points_per_side)
-        //    .map(|(x, y)| (size_w * (x as f64/points_per_side as f64),
-        //                   size_h * (y as f64/points_per_side as f64)))
-        //    .collect::<Vec<(f64, f64)>>();
-        //
-        //let mut lines = Vec::<Line>::new();
-        //lines.reserve(points.len().pow(2));
-        //for a in &points {
-        //    for b in &points {
-        //        lines.push(Line::new(*a, *b));
-        //    }
-        //}
-
         let noise = SuperSimplex::new();
 
-        //Lines { canvas, size_w, size_h, lines, points, noise }
-        let ret = Rc::new(RefCell::new(Lines { mouse_x: 0., mouse_y: 0., canvas: canvas.clone(), size_w, size_h, noise, rng }));
+        let ret = Rc::new(RefCell::new(Lines { mouse_x: size_w/2., mouse_y: size_h/2., canvas: canvas.clone(), size_w, size_h, noise, rng }));
 
-        let ret2 = ret.clone();
-
-        {
+        {   // mousemove listener
+            let ret = ret.clone();
             let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
                 ret.borrow_mut().mouse_x = event.client_x() as f64;
                 ret.borrow_mut().mouse_y = event.client_y() as f64;
@@ -111,49 +61,17 @@ impl Lines {
                 .expect("failed to add mousemove event listener");
             closure.forget();
         }
-        ret2
+
+        ret
     }
 
-    //fn draw_line(&self, ctx: &web_sys::CanvasRenderingContext2d, line: &Line, pos: f64) {
-    //    let f = |x: f64| (line.0.1-line.1.1) / (line.0.0-line.1.0) * (x - line.0.0) + line.0.1;
-    //
-    //    ctx.begin_path();
-    //    {
-    //        let (x, y) = line.0;
-    //        let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        ctx.move_to(x + noise_x, y + noise_y);
-    //    }
-    //    //self.ctx.move_to(
-    //    //    line.0.0 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE,
-    //    //    line.0.1 + self.noise.get([line.0.0/NOISE_SCALE, line.0.1/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE);
-    //
-    //    let dist = ((line.1.0 - line.0.0).powf(2.)
-    //               +(line.1.1 - line.0.1).powf(2.)).sqrt();
-    //    let num  = (dist * RESOLUTION) as i32;
-    //
-    //    let to_warped_point = |x: f64, y: f64| {
-    //        let noise_x = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE,  pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED]) as f64 * NOISE_RANGE;
-    //        ctx.line_to(x + noise_x, y + noise_y);
-    //    };
-    //    for i in 0..num {
-    //        let x = line.0.0 + (i as f64/num as f64) * (line.1.0 - line.0.0);
-    //        let y = f(x);
-    //
-    //        to_warped_point(y, x);
-    //    }
-    //    to_warped_point(line.1.0, line.1.1);
-    //    ctx.stroke();
-    //    //console::log_1(&JsValue::from_str(&format!("\n")));
-    //}
-
     fn render(&mut self, pos: f64) {
+        
+        // TODO: move this canvas size getting and ctx refreshing to onresize handler
         let (size_w, size_h) = (self.canvas.client_width() as f64, self.canvas.client_height() as f64);
         self.canvas.set_width(size_w as u32);
         self.canvas.set_height(size_h as u32);
-        //self.canvas.set_width(self.canvas.client_width() as u32);
-        //self.canvas.set_height(self.canvas.client_height() as u32);
+
         let ctx = self.canvas
             .get_context("2d")
             .unwrap()
@@ -161,8 +79,7 @@ impl Lines {
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
 
-        ctx.set_stroke_style(&JsValue::from_str(&format!("blue")));
-        ctx.set_fill_style(  &JsValue::from_str(&format!("green")));
+        ctx.set_fill_style(  &JsValue::from_str(&format!("#326ccc")));
 
         ctx.clear_rect(0., 0., size_w, size_h);
 
@@ -181,12 +98,10 @@ impl Lines {
                     let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED])
                         as f64 * NOISE_RANGE;
 
-                    //let (x, y) = to_warped_loc(x as f64 / RESOLUTION, y as f64 / RESOLUTION);
                     ctx.fill_rect(x + noise_x, y + noise_y, 1., 1.);
                 }
             }
         }
-        //console::log_1(&JsValue::from_str(&format!("client size: {}, {}", self.mouse_x, self.mouse_y)));
     }
 }
 
@@ -200,8 +115,6 @@ pub fn main_js() -> Result<(), JsValue> {
 
 
     // Your code goes here!
-    console::log_1(&JsValue::from_str("Hello world!"));
-
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
@@ -212,21 +125,7 @@ pub fn main_js() -> Result<(), JsValue> {
     canvas.set_width(canvas.client_width() as u32);
     canvas.set_height(canvas.client_height() as u32);
 
-    //let ctx = canvas
-    //    .get_context("2d")
-    //    .unwrap()
-    //    .unwrap()
-    //    .dyn_into::<web_sys::CanvasRenderingContext2d>()
-    //    .unwrap();
-
-
-    let (size_w, size_h) = (canvas.client_width(), canvas.client_height());
-    console::log_1(&JsValue::from_str(&format!("client size: {}, {}", size_w, size_h)));
-
-    let canvas = Rc::new(canvas);
-
-    let sim = Lines::new(canvas, NUM_POINTS);
-
+    let sim = Lines::new(Rc::new(canvas));
     game_loop(sim, UPDATE_RATE, 0.1, |_| {
         // update fn
     }, |g| {
