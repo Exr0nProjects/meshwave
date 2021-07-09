@@ -1,6 +1,6 @@
 {
-  "author": "You <you@example.com>",
-  "name": "rust-webpack-template",
+  "author": "Exr0n <mail@exr0n.com>",
+  "name": "meshwave",
   "version": "0.1.0",
   "scripts": {
     "build": "rimraf dist pkg && webpack",
