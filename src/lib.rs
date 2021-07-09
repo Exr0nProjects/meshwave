@@ -16,6 +16,8 @@ use itertools::Itertools;
 
 use std::iter::repeat;
 use std::mem;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 const UPDATE_RATE: u32 = 30; // updates per second
 
@@ -23,7 +25,7 @@ const NUM_POINTS: usize = 10;
 const NOISE_RANGE: f64 = 100.;
 const NOISE_SCALE: f64 = 300.;
 const CHANGE_SPEED: f64 = 0.1;
-const RESOLUTION: f64 = 0.12; // points per pixel
+const RESOLUTION: f64 = 0.08; // points per pixel
 
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
@@ -57,15 +59,17 @@ struct Lines {
     //points: Vec<(f64, f64)>,
     size_w: f64,
     size_h: f64,
+    mouse_x: f64,
+    mouse_y: f64,
     #[derivative(Debug="ignore")]
-    canvas: &'static web_sys::HtmlCanvasElement,
+    canvas: Rc<web_sys::HtmlCanvasElement>,
     #[derivative(Debug="ignore")]
     noise: SuperSimplex,
     #[derivative(Debug="ignore")]
     rng: ThreadRng,
 }
 impl Lines {
-    fn new(canvas: &'static web_sys::HtmlCanvasElement, points: usize) -> Lines {
+    fn new(canvas: Rc<web_sys::HtmlCanvasElement>, points: usize) -> Rc<RefCell<Lines>> {
 
         let (size_w, size_h) = (canvas.client_width() as f64, canvas.client_height() as f64);
         
@@ -94,24 +98,20 @@ impl Lines {
         let noise = SuperSimplex::new();
 
         //Lines { canvas, size_w, size_h, lines, points, noise }
-        let ret = Lines { canvas, size_w, size_h, noise, rng };
+        let ret = Rc::new(RefCell::new(Lines { mouse_x: 0., mouse_y: 0., canvas: canvas.clone(), size_w, size_h, noise, rng }));
+
+        let ret2 = ret.clone();
 
         {
             let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
-
-                //if pressed.get() {
-                //    ctx.line_to(event.offset_x() as f64, event.offset_y() as f64);
-                //    ctx.stroke();
-                //    ctx.begin_path();
-                //    ctx.move_to(event.offset_x() as f64, event.offset_y() as f64);
-                //}
-                // TODO
+                ret.borrow_mut().mouse_x = event.client_x() as f64;
+                ret.borrow_mut().mouse_y = event.client_y() as f64;
             }) as Box<dyn FnMut(_)>);
             canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())
                 .expect("failed to add mousemove event listener");
             closure.forget();
         }
-        ret
+        ret2
     }
 
     //fn draw_line(&self, ctx: &web_sys::CanvasRenderingContext2d, line: &Line, pos: f64) {
@@ -168,7 +168,11 @@ impl Lines {
 
         for x in (-NOISE_RANGE*RESOLUTION) as i32..((size_w + NOISE_RANGE)*RESOLUTION) as i32 {
             for y in (-NOISE_RANGE*RESOLUTION) as i32..((size_h + NOISE_RANGE)*RESOLUTION) as i32 {
-                if self.rng.gen_bool(0.8) {
+                let actual_x = x as f64 / RESOLUTION;
+                let actual_y = y as f64 / RESOLUTION;
+                let dist = ((actual_x-self.mouse_x).powf(2.) + (actual_y-self.mouse_y).powf(2.)).sqrt();
+                let radius = size_w.max(size_h) / 2.5;
+                if self.rng.gen_bool(1./((dist/radius).powf(4.)+1.)) {
                     let x = x as f64 / RESOLUTION;
                     let y = y as f64 / RESOLUTION;
 
@@ -182,6 +186,7 @@ impl Lines {
                 }
             }
         }
+        //console::log_1(&JsValue::from_str(&format!("client size: {}, {}", self.mouse_x, self.mouse_y)));
     }
 }
 
@@ -218,12 +223,14 @@ pub fn main_js() -> Result<(), JsValue> {
     let (size_w, size_h) = (canvas.client_width(), canvas.client_height());
     console::log_1(&JsValue::from_str(&format!("client size: {}, {}", size_w, size_h)));
 
-    let sim = Lines::new(&canvas, NUM_POINTS);
+    let canvas = Rc::new(canvas);
+
+    let sim = Lines::new(canvas, NUM_POINTS);
 
     game_loop(sim, UPDATE_RATE, 0.1, |_| {
         // update fn
     }, |g| {
-        g.game.render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
+        g.game.borrow_mut().render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
     });
 
     Ok(())
