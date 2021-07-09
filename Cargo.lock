@@ -294,6 +294,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
+name = "meshwave"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "derivative",
+ "futures",
+ "game-loop",
+ "getrandom 0.2.3",
+ "itertools",
+ "js-sys",
+ "noise",
+ "rand 0.8.4",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+ "wee_alloc",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -541,26 +561,6 @@ dependencies = [
  "crossbeam-utils",
  "lazy_static",
  "num_cpus",
-]
-
-[[package]]
-name = "rust-webpack-template"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "derivative",
- "futures",
- "game-loop",
- "getrandom 0.2.3",
- "itertools",
- "js-sys",
- "noise",
- "rand 0.8.4",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
- "wee_alloc",
 ]
 
 [[package]]
