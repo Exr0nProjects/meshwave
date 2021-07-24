@@ -13,6 +13,8 @@ use derivative::Derivative;
 use rand::prelude::{ thread_rng, ThreadRng };
 use rand::Rng;
 
+use js_sys::Date;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -20,7 +22,7 @@ const UPDATE_RATE: u32 = 30; // updates per second
 
 const NOISE_RANGE: f64 = 200.;
 const NOISE_SCALE: f64 = 300.;
-const CHANGE_SPEED: f64 = 0.08;
+const CHANGE_SPEED: f64 = 0.13;
 const RESOLUTION: f64 = 0.06; // points per pixel
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -65,7 +67,9 @@ impl Lines {
         ret
     }
 
-    fn render(&mut self, pos: f64) {
+    fn render(&mut self) {
+
+        let pos = Date::now() / 1e3 * CHANGE_SPEED;
         
         // TODO: move this canvas size getting and ctx refreshing to onresize handler
         let (size_w, size_h) = (self.canvas.client_width() as f64, self.canvas.client_height() as f64);
@@ -128,6 +132,6 @@ pub fn greet() {
     game_loop(sim, UPDATE_RATE, 0.1, |_| {
         // update fn
     }, |g| {
-        g.game.borrow_mut().render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
+        g.game.borrow_mut().render();
     });
 }

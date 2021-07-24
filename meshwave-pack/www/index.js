@@ -1,3 +1,3 @@
-import * as wasm from "wasm-game-of-lime";
+import * as wasm from "meshwave";
 
 wasm.greet();
