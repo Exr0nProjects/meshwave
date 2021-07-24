@@ -1,6 +1,6 @@
 [package]
 name = "meshwave"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Exr0n <mail@exr0n.com>"]
 edition = "2018"
 

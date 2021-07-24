@@ -1,3 +1,14 @@
-import * as wasm from "wasm-game-of-lime";
-let got = wasm.greet();
-console.log(got);
+import * as wasm from "meshwave";
+
+var enabled = false;
+
+window.addEventListener('load', () => {
+    document.getElementById("enable-meshwave").addEventListener('click', (e) => {
+        e.target.style = "color: #ccc !important;";
+        console.log(enabled)
+        if (!enabled) {
+            enabled = true;
+            wasm.greet();
+        }
+    });
+});

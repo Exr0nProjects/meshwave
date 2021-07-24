@@ -13,18 +13,21 @@ use derivative::Derivative;
 use rand::prelude::{ thread_rng, ThreadRng };
 use rand::Rng;
 
+use js_sys::Date;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
-const UPDATE_RATE: u32 = 30; // updates per second
+const UPDATE_RATE: u32 = 20; // updates per second
 
 const NOISE_RANGE: f64 = 100.;
 const NOISE_SCALE: f64 = 300.;
-const CHANGE_SPEED: f64 = 0.08;
-const RESOLUTION: f64 = 0.05; // points per pixel
+const CHANGE_SPEED: f64 = 0.13;
+const RESOLUTION: f64 = 0.04; // points per pixel
+const MOUSE_RADIUS: f64 = 2.5;
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
+ // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
+ // allocator.
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -65,7 +68,9 @@ impl Lines {
         ret
     }
 
-    fn render(&mut self, pos: f64) {
+    fn render(&mut self) {
+
+        let pos = Date::now() / 1e3 * CHANGE_SPEED;
         
         // TODO: move this canvas size getting and ctx refreshing to onresize handler
         let (size_w, size_h) = (self.canvas.client_width() as f64, self.canvas.client_height() as f64);
@@ -88,7 +93,7 @@ impl Lines {
                 let actual_x = x as f64 / RESOLUTION;
                 let actual_y = y as f64 / RESOLUTION;
                 let dist = ((actual_x-self.mouse_x).powf(2.) + (actual_y-self.mouse_y).powf(2.)).sqrt();
-                let radius = size_w.max(size_h) / 2.5;
+                let radius = size_w.max(size_h) / MOUSE_RADIUS;
                 if self.rng.gen_bool(1./((dist/radius).powf(4.)+1.)) {
                     let x = x as f64 / RESOLUTION;
                     let y = y as f64 / RESOLUTION;
@@ -128,7 +133,7 @@ pub fn greet() -> i32 {
     game_loop(sim, UPDATE_RATE, 0.1, |_| {
         // update fn
     }, |g| {
-        g.game.borrow_mut().render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
+        g.game.borrow_mut().render();
     });
 
     0
