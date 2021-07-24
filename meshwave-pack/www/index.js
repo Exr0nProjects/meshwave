@@ -1,3 +1,3 @@
 import * as wasm from "wasm-game-of-lime";
-
-wasm.greet();
+let got = wasm.greet();
+console.log(got);

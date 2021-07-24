@@ -18,10 +18,10 @@ use std::cell::RefCell;
 
 const UPDATE_RATE: u32 = 30; // updates per second
 
-const NOISE_RANGE: f64 = 200.;
+const NOISE_RANGE: f64 = 100.;
 const NOISE_SCALE: f64 = 300.;
 const CHANGE_SPEED: f64 = 0.08;
-const RESOLUTION: f64 = 0.06; // points per pixel
+const RESOLUTION: f64 = 0.05; // points per pixel
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -106,7 +106,7 @@ impl Lines {
 }
 
 #[wasm_bindgen]
-pub fn greet() {
+pub fn greet() -> i32 {
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let canvas = document.get_element_by_id("meshwave-canvas").unwrap();
@@ -130,4 +130,6 @@ pub fn greet() {
     }, |g| {
         g.game.borrow_mut().render(g.number_of_updates() as f64 / UPDATE_RATE as f64);
     });
+
+    0
 }
