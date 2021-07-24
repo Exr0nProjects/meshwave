@@ -18,15 +18,16 @@ use js_sys::Date;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-const UPDATE_RATE: u32 = 30; // updates per second
+const UPDATE_RATE: u32 = 20; // updates per second
 
 const NOISE_RANGE: f64 = 200.;
 const NOISE_SCALE: f64 = 300.;
 const CHANGE_SPEED: f64 = 0.13;
-const RESOLUTION: f64 = 0.06; // points per pixel
+const RESOLUTION: f64 = 0.04; // points per pixel
+const MOUSE_RADIUS: f64 = 2.5;
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
+ // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
+ // allocator.
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -92,7 +93,7 @@ impl Lines {
                 let actual_x = x as f64 / RESOLUTION;
                 let actual_y = y as f64 / RESOLUTION;
                 let dist = ((actual_x-self.mouse_x).powf(2.) + (actual_y-self.mouse_y).powf(2.)).sqrt();
-                let radius = size_w.max(size_h) / 2.5;
+                let radius = size_w.max(size_h) / MOUSE_RADIUS;
                 if self.rng.gen_bool(1./((dist/radius).powf(4.)+1.)) {
                     let x = x as f64 / RESOLUTION;
                     let y = y as f64 / RESOLUTION;
