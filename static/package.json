@@ -1,0 +1,15 @@
+{
+  "name": "meshwave",
+  "collaborators": [
+    "Exr0n <mail@exr0n.com>"
+  ],
+  "version": "0.1.2",
+  "files": [
+    "meshwave_bg.wasm",
+    "meshwave.js",
+    "meshwave.d.ts"
+  ],
+  "module": "meshwave.js",
+  "types": "meshwave.d.ts",
+  "sideEffects": false
+}

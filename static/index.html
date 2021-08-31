@@ -1,25 +1,12 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
-    <title>My Rust + Webpack project!</title>
-<style>
-body {
-    background-color: black;
-    padding: 0;
-    overflow: hidden;
-}
-#canvas {
-    border: 0;
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-}
-</style>
+    <meta charset="utf-8">
+    <title>Hello wasm-pack!</title>
   </head>
-  <body>
-    <script src="index.js"></script>
-    <canvas id="canvas"></canvas>
+  <body style="background-color: black; overflow: hidden;">
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    <canvas id="meshwave-canvas" style="border: 0; padding: 0; margin: 0; width: 100%; height: 100vh;"></canvas>
+    <script src="./bootstrap.js"></script>
   </body>
 </html>
