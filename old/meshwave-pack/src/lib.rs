@@ -84,7 +84,7 @@ impl Lines {
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
 
-        ctx.set_fill_style(  &JsValue::from_str(&format!("#326ccc")));
+        ctx.set_fill_style(  &JsValue::from_str(&format!("#3d86ff")));
 
         ctx.clear_rect(0., 0., size_w, size_h);
 
@@ -103,7 +103,7 @@ impl Lines {
                     let noise_y = self.noise.get([x/NOISE_SCALE, y/NOISE_SCALE, -pos*CHANGE_SPEED])
                         as f64 * NOISE_RANGE;
 
-                    ctx.fill_rect(x + noise_x, y + noise_y, 1., 1.);
+                    ctx.fill_rect(x + noise_x, y + noise_y, 3., 3.);
                 }
             }
         }

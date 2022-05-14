@@ -79,7 +79,7 @@ impl Lines {
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
 
-        ctx.set_fill_style(  &JsValue::from_str(&format!("#326ccc")));
+        ctx.set_fill_style(  &JsValue::from_str(&format!("#3d86ff")));
 
         ctx.clear_rect(0., 0., size_w, size_h);
 
